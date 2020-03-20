@@ -1,11 +1,9 @@
-﻿using System;
+using System;
+using System.Threading.Tasks;
 
-namespace Zync.Core
-{
-	class Program
-	{
-		static void Main(string[] args)
-		{
+namespace Zync.Core {
+	internal class Program {
+		private static async Task Main(string[] args) {
 			Console.WriteLine("Hello World!");
 		}
 	}
