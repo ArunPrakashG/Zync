@@ -1,3 +1,4 @@
+using FluentScheduler;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -16,6 +17,7 @@ namespace Zync.Server {
 		private readonly ILogger Logger;
 		private Command PreviousCommand;
 		private readonly ClientConfig Config;
+		private readonly SemaphoreSlim ReceiveSync = new SemaphoreSlim(1, 1);
 
 		internal delegate void OnReceivedDelegate(object sender, ClientMessageEventArgs e);
 		internal delegate void OnDisconnectedDelegate(object sender, ClientDisconnectedEventArgs e);
@@ -40,7 +42,7 @@ namespace Zync.Server {
 
 		private void SetState(Enums.CLIENT_STATE state) => Config.CurrentState = state;
 
-		public async Task Init() {
+		internal async Task Init() {
 			Logger.Info($"Connected to client => {Config.IpAddress}");
 			SetState(Enums.CLIENT_STATE.CONNECTED);
 			ZyncServer.AddClient(this);
@@ -60,6 +62,8 @@ namespace Zync.Server {
 				if (!Config.ClientSocket.Connected) {
 					await DisconnectClientAsync(true).ConfigureAwait(false);
 				}
+
+				await ReceiveSync.WaitAsync().ConfigureAwait(false);
 
 				try {
 					byte[] buffer = new byte[5024];
@@ -103,6 +107,9 @@ namespace Zync.Server {
 					Logger.Log(e);
 					continue;
 				}
+				finally {
+					ReceiveSync.Release();
+				}
 			} while (!Config.ShouldDisconnectConnection);
 		}
 
@@ -117,10 +124,10 @@ namespace Zync.Server {
 				return;
 			}
 
-			ClientSocket.Send(Encoding.ASCII.GetBytes(response));
+			Config.ClientSocket.Send(Encoding.ASCII.GetBytes(response));
 		}
 
-		private static string GenerateUniqueId(string ipAddress) {
+		internal static string GenerateUniqueId(string ipAddress) {
 			if (string.IsNullOrEmpty(ipAddress)) {
 				return string.Empty;
 			}
@@ -128,9 +135,30 @@ namespace Zync.Server {
 			return ipAddress.ToLowerInvariant().Trim().GetHashCode().ToString();
 		}
 
-		private static string FormatResponse(CommandResponseCode responseCode, ResponseObjectType respType, string? msg = null, string? json = null) {
-			ResponseBase response = new ResponseBase(responseCode, respType, msg, json);
-			return response.AsJson();
+		public async Task DisconnectClientAsync(bool dispose = false) {
+			Config.DisconnectClient();
+
+			if (Config.ClientSocket.Connected) {
+				Config.ClientSocket.Disconnect(true);
+			}
+
+			while (Config.ClientSocket.Connected) {
+				Logger.Log("Waiting for client to disconnect...");
+				await Task.Delay(5).ConfigureAwait(false);
+			}
+
+			Logger.Log($"Disconnected client => {Config.IpAddress}");
+
+			OnDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(Config.IpAddress, Config.Uid, 5000));
+
+			if (dispose) {
+				Config.ClientSocket?.Close();
+				Config.ClientSocket?.Dispose();
+
+				JobManager.AddJob(() => {
+					TCPServerCore.RemoveClient(this);
+				}, TimeSpan.FromSeconds(5));
+			}
 		}
 	}
 }

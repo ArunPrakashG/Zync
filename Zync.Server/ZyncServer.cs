@@ -1,4 +1,5 @@
 namespace Zync.Server {
+	using FluentScheduler;
 	using System;
 	using System.Collections.Generic;
 	using System.Net;
@@ -19,6 +20,8 @@ namespace Zync.Server {
 		private readonly List<Client> Clients = new List<Client>();
 		private bool IsOnline;
 
+		static ZyncServer() => JobManager.Initialize(new Registry());
+
 		public ZyncServer(IPAddress _address, int _port) {
 			if(_port <= 0) {
 				throw new ArgumentOutOfRangeException(nameof(_port));
@@ -31,6 +34,7 @@ namespace Zync.Server {
 			ServerPort = _port;
 			ListerningAddress = _address;
 			Listener = new TcpListener(ListerningAddress, ServerPort);
+			
 		}
 
 		public void InitServer() {
