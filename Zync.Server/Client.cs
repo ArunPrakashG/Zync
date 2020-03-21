@@ -14,51 +14,56 @@ using static Zync.Logging.Enums;
 namespace Zync.Server {
 	internal class Client {
 		private readonly ILogger Logger;
-		private Command PreviousCommand { get; set; }
-		public string? UniqueId { get; private set; }
-		public string? IpAddress { get; private set; }
-		public Socket ClientSocket { get; set; }
-		public bool DisconnectConnection { get; set; }
-		public EndPoint? ClientEndPoint { get; set; }
+		private Command PreviousCommand;
+		private readonly ClientConfig Config;
 
-		public delegate void OnClientMessageRecevied(object sender, ClientMessageEventArgs e);
-		public delegate void OnClientDisconnected(object sender, ClientDisconnectedEventArgs e);
-		public delegate void OnClientCommandRecevied(object sender, ClientCommandReceviedEventArgs e);
-		public event OnClientMessageRecevied? OnMessageRecevied;
-		public event OnClientDisconnected? OnDisconnected;
-		public event OnClientCommandRecevied? OnCommandRecevied;
+		internal delegate void OnReceivedDelegate(object sender, ClientMessageEventArgs e);
+		internal delegate void OnDisconnectedDelegate(object sender, ClientDisconnectedEventArgs e);
+		internal delegate void OnCommandReceivedDelegate(object sender, ClientCommandReceviedEventArgs e);
+		internal event OnReceivedDelegate OnReceived;
+		internal event OnDisconnectedDelegate OnDisconnected;
+		internal event OnCommandReceivedDelegate OnCommandRecevied;
 
-		public Client(Socket sock) {
-			ClientSocket = sock ?? throw new ArgumentNullException(nameof(sock), "Socket cannot be null!");
-			ClientEndPoint = ClientSocket.RemoteEndPoint;
-			IpAddress = ClientEndPoint?.ToString()?.Split(':')[0].Trim();
+		internal Client(Socket sock) {
+			Config = new ClientConfig(sock ?? throw new ArgumentNullException(nameof(sock), "Socket cannot be null!")) {
+				ClientEndpoint = sock.RemoteEndPoint,
+				IpAddress = sock.RemoteEndPoint?.ToString()?.Split(':')[0].Trim()
+			};
 
-			UniqueId = IpAddress != null && !string.IsNullOrEmpty(IpAddress)
-				? GenerateUniqueId(IpAddress)
-				: GenerateUniqueId(ClientSocket.GetHashCode().ToString());
-			Logger = new Logger($"CLIENT | {UniqueId}");
+			Config.Uid = !string.IsNullOrEmpty(Config.IpAddress)
+				? GenerateUniqueId(Config.IpAddress)
+				: GenerateUniqueId(sock.GetHashCode().ToString());			
+			Logger = new Logger($"{nameof(Client)} | {Config.Uid}");
 		}
 
+		internal ClientConfig GetConfiguration() => Config;
+
+		private void SetState(Enums.CLIENT_STATE state) => Config.CurrentState = state;
+
 		public async Task Init() {
-			Logger.Log($"Connected client IP => {IpAddress} / {UniqueId}", LogLevels.Info);
+			Logger.Info($"Connected to client => {Config.IpAddress}");
+			SetState(Enums.CLIENT_STATE.CONNECTED);
 			ZyncServer.AddClient(this);
 			await RecevieAsync().ConfigureAwait(false);
 		}
 
 		private async Task RecevieAsync() {
+			Logger.Info("Client is ready. (R/S available)");
+			SetState(Enums.CLIENT_STATE.READY);
+
 			do {
-				if (ClientSocket.Available <= 0) {
+				if (Config.ClientSocket.Available <= 0) {
 					await Task.Delay(1).ConfigureAwait(false);
 					continue;
 				}
 
-				if (!ClientSocket.Connected) {
+				if (!Config.ClientSocket.Connected) {
 					await DisconnectClientAsync(true).ConfigureAwait(false);
 				}
 
 				try {
 					byte[] buffer = new byte[5024];
-					int i = ClientSocket.Receive(buffer);
+					int i = Config.ClientSocket.Receive(buffer);
 
 					if (i <= 0) {
 						await Task.Delay(1).ConfigureAwait(false);
@@ -73,13 +78,13 @@ namespace Zync.Server {
 						continue;
 					}
 
-					CommandObject cmdObject = new CommandObject(receviedMessage, DateTime.Now);
+					Command cmdObject = new Command(receviedMessage);
 
-					if (PreviousCommand != null && cmdObject.Equals(PreviousCommand)) {
+					if (cmdObject.Equals(PreviousCommand)) {
 						continue;
 					}
 
-					OnMessageRecevied?.Invoke(this, new ClientMessageEventArgs(receviedMessage));
+					OnReceived?.Invoke(this, new ClientMessageEventArgs(receviedMessage));
 
 					await OnRecevied(cmdObject).ConfigureAwait(false);
 					PreviousCommand = cmdObject;
@@ -98,7 +103,7 @@ namespace Zync.Server {
 					Logger.Log(e);
 					continue;
 				}
-			} while (!DisconnectConnection);
+			} while (!Config.ShouldDisconnectConnection);
 		}
 
 		public async Task SendResponseAsync(string? response) {

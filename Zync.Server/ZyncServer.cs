@@ -10,7 +10,7 @@ namespace Zync.Server {
 	using static Zync.Logging.Enums;
 
 	public class ZyncServer {
-		private static readonly ILogger Logger = new Logger("TCP-SERVER");
+		private static readonly ILogger Logger = new Logger(nameof(ZyncServer));
 		private readonly TcpListener Listener;
 		private readonly int ServerPort;
 		private readonly IPAddress ListerningAddress;
