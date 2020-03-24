@@ -1,7 +1,6 @@
 using FluentScheduler;
 using System;
-using System.Collections.Generic;
-using System.Net;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -13,7 +12,7 @@ using Zync.Server.Events;
 using static Zync.Logging.Enums;
 
 namespace Zync.Server {
-	internal class Client {
+	internal class Processor {
 		private readonly ILogger Logger;
 		private Command PreviousCommand;
 		private readonly ClientConfig Config;
@@ -26,16 +25,16 @@ namespace Zync.Server {
 		internal event OnDisconnectedDelegate OnDisconnected;
 		internal event OnCommandReceivedDelegate OnCommandRecevied;
 
-		internal Client(Socket sock) {
-			Config = new ClientConfig(sock ?? throw new ArgumentNullException(nameof(sock), "Socket cannot be null!")) {
-				ClientEndpoint = sock.RemoteEndPoint,
-				IpAddress = sock.RemoteEndPoint?.ToString()?.Split(':')[0].Trim()
+		internal Processor(TcpClient _client) {
+			Config = new ClientConfig(_client ?? throw new ArgumentNullException(nameof(_client), "Socket cannot be null!")) {
+				ClientEndpoint = _client.Client.RemoteEndPoint,
+				IpAddress = _client.Client.RemoteEndPoint?.ToString()?.Split(':')[0].Trim()
 			};
 
 			Config.Uid = !string.IsNullOrEmpty(Config.IpAddress)
 				? GenerateUniqueId(Config.IpAddress)
-				: GenerateUniqueId(sock.GetHashCode().ToString());			
-			Logger = new Logger($"{nameof(Client)} | {Config.Uid}");
+				: GenerateUniqueId(_client.GetHashCode().ToString());
+			Logger = new Logger($"{nameof(Processor)} | {Config.Uid}");
 		}
 
 		internal ClientConfig GetConfiguration() => Config;
@@ -54,24 +53,28 @@ namespace Zync.Server {
 			SetState(Enums.CLIENT_STATE.READY);
 
 			do {
-				if (Config.ClientSocket.Available <= 0) {
+				if (Config.ClientConnection.Available <= 0) {
 					await Task.Delay(1).ConfigureAwait(false);
 					continue;
 				}
 
-				if (!Config.ClientSocket.Connected) {
+				if (!Config.ClientConnection.Connected) {
 					await DisconnectClientAsync(true).ConfigureAwait(false);
 				}
 
 				await ReceiveSync.WaitAsync().ConfigureAwait(false);
 
 				try {
-					byte[] buffer = new byte[5024];
-					int i = Config.ClientSocket.Receive(buffer);
+					byte[] buffer = new byte[1024];
+					int bytesRead;
+					using FileStream output = File.Create("result.dat");
+					using NetworkStream clientStream = Config.ClientConnection.GetStream();
 
-					if (i <= 0) {
-						await Task.Delay(1).ConfigureAwait(false);
-						continue;
+					SetState(Enums.CLIENT_STATE.CONNECTED);
+					Logger.Info("Client connected. Starting to receive the file...");
+
+					while ((bytesRead = clientStream.Read(buffer, 0, buffer.Length)) > 0) {
+						output.Write(buffer, 0, bytesRead);
 					}
 
 					string receviedMessage = Encoding.ASCII.GetString(buffer);
@@ -124,7 +127,7 @@ namespace Zync.Server {
 				return;
 			}
 
-			Config.ClientSocket.Send(Encoding.ASCII.GetBytes(response));
+			Config.ClientConnection.Send(Encoding.ASCII.GetBytes(response));
 		}
 
 		internal static string GenerateUniqueId(string ipAddress) {
@@ -138,11 +141,11 @@ namespace Zync.Server {
 		public async Task DisconnectClientAsync(bool dispose = false) {
 			Config.DisconnectClient();
 
-			if (Config.ClientSocket.Connected) {
-				Config.ClientSocket.Disconnect(true);
+			if (Config.ClientConnection.Connected) {
+				Config.ClientConnection.Disconnect(true);
 			}
 
-			while (Config.ClientSocket.Connected) {
+			while (Config.ClientConnection.Connected) {
 				Logger.Log("Waiting for client to disconnect...");
 				await Task.Delay(5).ConfigureAwait(false);
 			}
@@ -152,8 +155,8 @@ namespace Zync.Server {
 			OnDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(Config.IpAddress, Config.Uid, 5000));
 
 			if (dispose) {
-				Config.ClientSocket?.Close();
-				Config.ClientSocket?.Dispose();
+				Config.ClientConnection?.Close();
+				Config.ClientConnection?.Dispose();
 
 				JobManager.AddJob(() => {
 					TCPServerCore.RemoveClient(this);

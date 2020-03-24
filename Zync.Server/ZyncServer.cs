@@ -17,7 +17,7 @@ namespace Zync.Server {
 		private readonly IPAddress ListerningAddress;
 		private bool IsStopRequested;
 		private readonly SemaphoreSlim ListSemaphore = new SemaphoreSlim(1, 1);
-		private readonly List<Client> Clients = new List<Client>();
+		private readonly List<Processor> Clients = new List<Processor>();
 		private bool IsOnline;
 
 		static ZyncServer() => JobManager.Initialize(new Registry());
@@ -50,8 +50,8 @@ namespace Zync.Server {
 			Helpers.InBackgroundThread(async () => {
 				do {
 					if (Listener.Pending()) {
-						Socket socket = await Listener.AcceptSocketAsync().ConfigureAwait(false);
-						Client client = new Client(socket);
+						TcpClient socket = await Listener.AcceptTcpClientAsync().ConfigureAwait(false);
+						Processor client = new Processor(socket);
 						Helpers.InBackground(client.Init, true);
 					}
 
@@ -63,7 +63,7 @@ namespace Zync.Server {
 
 		private async Task ShutdownServer() {
 			if (Clients.Count > 0) {
-				foreach (Client client in Clients) {
+				foreach (Processor client in Clients) {
 					if (client == null) {
 						continue;
 					}
@@ -76,7 +76,7 @@ namespace Zync.Server {
 			Logger.Log("Zync Server stopped.");
 		}
 
-		public static void AddClient(Client client) {
+		public static void AddClient(Processor client) {
 			if (client == null) {
 				return;
 			}
@@ -98,7 +98,7 @@ namespace Zync.Server {
 			}
 		}
 
-		public static void RemoveClient(Client client) {
+		public static void RemoveClient(Processor client) {
 			if (client == null) {
 				return;
 			}

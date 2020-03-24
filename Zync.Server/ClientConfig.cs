@@ -11,10 +11,10 @@ namespace Zync.Server {
 		internal Enums.CLIENT_STATE CurrentState;
 		internal EndPoint ClientEndpoint;
 		internal bool ShouldDisconnectConnection;
-		internal readonly Socket ClientSocket;		
+		internal readonly TcpClient ClientConnection;		
 
-		internal ClientConfig(Socket _clientSocket) {
-			ClientSocket = _clientSocket;
+		internal ClientConfig(TcpClient _clientSocket) {
+			ClientConnection = _clientSocket;
 			Uid = string.Empty;
 			IpAddress = string.Empty;
 			CurrentState = Enums.CLIENT_STATE.CONNECTING;
