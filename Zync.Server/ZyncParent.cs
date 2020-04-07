@@ -1,4 +1,4 @@
-namespace Zync.Server {
+namespace Zync.Parent {
 	using FluentScheduler;
 	using System;
 	using System.Collections.Generic;
@@ -10,8 +10,8 @@ namespace Zync.Server {
 	using Zync.Logging.Interfaces;
 	using static Zync.Logging.Enums;
 
-	public class ZyncServer {
-		private static readonly ILogger Logger = new Logger(nameof(ZyncServer));
+	public class ZyncParent {
+		private static readonly ILogger Logger = new Logger(nameof(ZyncParent));
 		private readonly TcpListener Listener;
 		private readonly int ServerPort;
 		private readonly IPAddress ListerningAddress;
@@ -20,19 +20,15 @@ namespace Zync.Server {
 		private readonly List<Processor> Clients = new List<Processor>();
 		private bool IsOnline;
 
-		static ZyncServer() => JobManager.Initialize(new Registry());
+		static ZyncParent() => JobManager.Initialize(new Registry());
 
-		public ZyncServer(IPAddress _address, int _port) {
+		public ZyncParent(IPAddress _address, int _port) {
 			if(_port <= 0) {
 				throw new ArgumentOutOfRangeException(nameof(_port));
 			}
 
-			if(_address == null) {
-				throw new ArgumentNullException(nameof(_address));
-			}
-
 			ServerPort = _port;
-			ListerningAddress = _address;
+			ListerningAddress = _address ?? throw new ArgumentNullException(nameof(_address));
 			Listener = new TcpListener(ListerningAddress, ServerPort);
 			
 		}

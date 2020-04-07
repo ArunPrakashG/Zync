@@ -1,7 +1,7 @@
-namespace Zync.Server.Events {
-	public class ClientMessageEventArgs {
+namespace Zync.Parent.Events {
+	public class OnReceivedEventArgs {
 		public string RawCommandJson { get; set; } = string.Empty;
 
-		public ClientMessageEventArgs(string command) => RawCommandJson = command;
+		public OnReceivedEventArgs(string command) => RawCommandJson = command;
 	}
 }

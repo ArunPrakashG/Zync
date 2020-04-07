@@ -5,16 +5,16 @@ VisualStudioVersion = 16.0.29905.134
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Core", "Zync.Core\Zync.Core.csproj", "{77EBD2D2-5C82-4F4F-AC53-567E64598117}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Server", "Zync.Server\Zync.Server.csproj", "{87C26457-1D1D-43CE-A703-D5D1B41C5794}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Parent", "Zync.Server\Zync.Parent.csproj", "{87C26457-1D1D-43CE-A703-D5D1B41C5794}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Client", "Zync.Client\Zync.Client.csproj", "{4CF293C8-91AE-4F67-9382-C8B01B3C2C9D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Child", "Zync.Client\Zync.Child.csproj", "{4CF293C8-91AE-4F67-9382-C8B01B3C2C9D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{17885C29-EE38-4A9B-8142-4C6FCBE3D18C}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zync.Logging", "Zync.Logging\Zync.Logging.csproj", "{2301EC02-49F4-4FC3-B990-925E0AF193B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zync.Logging", "Zync.Logging\Zync.Logging.csproj", "{2301EC02-49F4-4FC3-B990-925E0AF193B6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

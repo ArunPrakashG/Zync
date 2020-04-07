@@ -1,6 +1,6 @@
 using System;
 
-namespace Zync.Server {
+namespace Zync.Parent {
 	internal struct Command {
 		internal readonly int CommandUid;
 		internal readonly string CommandString;

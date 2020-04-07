@@ -1,11 +1,11 @@
 using System;
 
-namespace Zync.Server.Events {
-	public class ClientCommandReceviedEventArgs {
+namespace Zync.Parent.Events {
+	public class OnRequestReceivedEventArgs {
 		public DateTime ReceviedTime { get; set; }
 		public CommandBase CommandBase { get; set; }
 
-		public ClientCommandReceviedEventArgs(DateTime dt, CommandBase _cmdBase) {
+		public OnRequestReceivedEventArgs(DateTime dt, CommandBase _cmdBase) {
 			ReceviedTime = dt;
 			CommandBase = _cmdBase;
 		}

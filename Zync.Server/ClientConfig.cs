@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace Zync.Server {
+namespace Zync.Parent {
 	internal class ClientConfig {
 		internal string Uid;
 		internal string IpAddress;

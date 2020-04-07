@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Zync.Server {
+namespace Zync.Parent {
 	internal class Helpers {
 
 		public static Thread InBackgroundThread(Action action, string threadName, bool longRunning = false) {
